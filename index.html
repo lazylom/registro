@@ -77,14 +77,23 @@ function inp(k,c){const t=c[2]||'',id=k+'_'+c[0];let o;
  const el=o?`<select id="${id}">${o.map(x=>`<option>${esc(x)}</option>`).join('')}</select>`:
  `<input id="${id}" type="${{d:'date',n:'number',N:'number',m:'number'}[t]||'text'}" step="any" ${t=='c'?'list="car"':''}>`;
  return `<label>${c[1]}${el}</label>`}
+let ED=null;
 function add(k){const r={};S[k].c.forEach(c=>{if(c[2]!='x')r[c[0]]=$('#'+k+'_'+c[0]).value});
- if(!Object.values(r).some(v=>v))return;if(CALC[k])r.total=CALC[k](r);rows(k).push(r);save();render()}
-function del(k,i){rows(k).splice(i,1);save();render()}
+ if(!Object.values(r).some(v=>v))return;if(CALC[k])r.total=CALC[k](r);
+ if(ED&&ED.k==k){const o=rows(k)[ED.i];
+  if(k=='plant'){const a=o.cultivo+' – '+o.cuadro,b=r.cultivo+' – '+r.cuadro;if(a!=b)['insumo','riego','jornal','cosecha','semilla'].forEach(t=>rows(t).forEach(x=>{if(x.pl==a)x.pl=b}))}
+  if(k=='animal'&&o.car!=r.car)['sanidad','ventag'].forEach(t=>rows(t).forEach(x=>{if(x.car==o.car)x.car=r.car}));
+  rows(k)[ED.i]=r;ED=null}else rows(k).push(r);save();render()}
+function edit(k,i){ED={k,i};render();const r=rows(k)[i];S[k].c.forEach(c=>{const e=$('#'+k+'_'+c[0]);if(e&&c[2]!='x')e.value=r[c[0]]??''});const e=$('#'+k+'_'+S[k].c[0][0]);if(e)e.scrollIntoView({block:'center'})}
+function cancel(){ED=null;render()}
+function del(k,i){const r=rows(k)[i];let m='¿Seguro que querés borrar este registro? No se puede deshacer.';
+ if(k=='plant'){const l=r.cultivo+' – '+r.cuadro,n=['insumo','riego','jornal','cosecha','semilla'].reduce((a,t)=>a+rows(t).filter(x=>x.pl==l).length,0);if(n)m+='\n\nTiene '+n+' registros asociados (insumos, riego, etc.) que NO se borrarán.'}
+ if(!confirm(m))return;if(ED&&ED.k==k)ED=null;rows(k).splice(i,1);save();render()}
 function fmt(c,v){const t=c[2]||'';return t=='m'||t=='x'?fm(v):esc(v)}
 function tbl(k){const s=S[k],hasT=s.c.some(c=>'mxN'.includes(c[2]||'-'));
- return `<section><h2>${s.t}</h2><div class="f">${s.c.filter(c=>c[2]!='x').map(c=>inp(k,c)).join('')}<button class="b" onclick="add('${k}')">Agregar</button></div>
+ return `<section><h2>${s.t}</h2><div class="f">${s.c.filter(c=>c[2]!='x').map(c=>inp(k,c)).join('')}<button class="b" onclick="add('${k}')">${ED&&ED.k==k?'Guardar cambios':'Agregar'}</button>${ED&&ED.k==k?'<button class="b" style="background:var(--mu)" onclick="cancel()">Cancelar</button>':''}</div>
  <div class="w"><table><thead><tr>${s.c.map(c=>`<th>${c[1]}</th>`).join('')}<th></th></tr></thead><tbody>${
- rows(k).map((r,i)=>`<tr>${s.c.map(c=>`<td>${fmt(c,r[c[0]])}</td>`).join('')}<td><button class="x" onclick="del('${k}',${i})">✕</button></td></tr>`).join('')}</tbody>${
+ rows(k).map((r,i)=>`<tr${ED&&ED.k==k&&ED.i==i?' style="background:var(--bg)"':''}>${s.c.map(c=>`<td>${fmt(c,r[c[0]])}</td>`).join('')}<td style="white-space:nowrap"><button class="x" style="color:var(--ac)" title="Editar" onclick="edit('${k}',${i})">✎</button><button class="x" title="Borrar" onclick="del('${k}',${i})">✕</button></td></tr>`).join('')}</tbody>${
  hasT?`<tfoot><tr>${s.c.map(c=>`<td>${'mxN'.includes(c[2]||'-')?fmt(c[2]=='N'?['','','n']:c,sum(k,c[0])):''}</td>`).join('')}<td></td></tr></tfoot>`:''}</table></div></section>`}
 function flows(){const f=[],P=(k,fld,cat,s)=>rows(k).forEach(r=>f.push({d:(r.fecha||'').slice(0,7)||'s/f',cat,m:num(r[fld])*s}));
  P('cosecha','ingreso','Ventas agrícolas',1);P('ventag','ingreso','Ventas de ganado',1);
