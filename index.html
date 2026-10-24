@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes"><title>Gestión Agro-Ganadera</title>
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#3f6b3a"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><title>Gestión Agro-Ganadera</title>
 <style>
 :root{--bg:#f6f4ee;--sf:#fff;--tx:#23291f;--mu:#6b7266;--ac:#3f6b3a;--bd:#ddd8c8;--rd:#b3412f;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171a15;--sf:#21251e;--tx:#e8eadf;--mu:#9aa192;--ac:#8fc084;--bd:#383d33;--rd:#e27a68}}
@@ -31,7 +31,7 @@ p.n{color:var(--mu);font-size:12px;margin:6px 0 0}
 <h1>🌾🐄 Gestión Agro-Ganadera</h1>
 <nav id="nav"></nav><div id="app"></div>
 <p class="n" id="st">Solo en este dispositivo · Importes en pesos uruguayos.</p>
-<p class="n"><button class="b" onclick="exportar()">Descargar respaldo</button> <button class="b" onclick="this.nextElementSibling.click()">Restaurar respaldo</button><input type="file" accept=".json" hidden onchange="importar(this.files[0])"></p>
+<p class="n"><button class="b" id="inst" hidden onclick="ip.prompt()">📲 Instalar app</button> <button class="b" onclick="exportar()">Descargar respaldo</button> <button class="b" onclick="this.nextElementSibling.click()">Restaurar respaldo</button><input type="file" accept=".json" hidden onchange="importar(this.files[0])"></p>
 </main>
 <script>
 // c: [campo, etiqueta, tipo] tipos: d fecha, n número, N número sumado, m dinero, x calculado, p plantación, c caravana, o:a,b opciones
@@ -137,5 +137,7 @@ function render(){
  h=alertsHtml()+h+(tab=='fin'?fin():tab=='map'?mapa():G[tab].map(tbl).join(''));$('#app').innerHTML=h}
 function exportar(){const b=new Blob([JSON.stringify(D)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='respaldo-agro-'+new Date().toISOString().slice(0,10)+'.json';a.click()}
 function importar(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!x.t)throw 0;D=x;D.cfg=D.cfg||{};save();render()}catch(e){alert('Archivo de respaldo inválido')}};r.readAsText(f)}
+let ip=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;document.querySelector('#inst').hidden=false});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 render();initDb();
 </script></body></html>
