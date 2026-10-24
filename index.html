@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><title>Gestión Agro-Ganadera</title>
+<style>
+:root{--bg:#f6f4ee;--sf:#fff;--tx:#23291f;--mu:#6b7266;--ac:#3f6b3a;--bd:#ddd8c8;--rd:#b3412f;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171a15;--sf:#21251e;--tx:#e8eadf;--mu:#9aa192;--ac:#8fc084;--bd:#383d33;--rd:#e27a68}}
+:root[data-theme="dark"]{--bg:#171a15;--sf:#21251e;--tx:#e8eadf;--mu:#9aa192;--ac:#8fc084;--bd:#383d33;--rd:#e27a68}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1000px;margin:0 auto;padding:12px}
+h1{font-size:20px;margin:6px 0 10px}h2{font-size:16px;margin:0 0 8px}
+nav{display:flex;gap:6px;margin-bottom:12px}
+nav button{flex:1;padding:10px;border:1px solid var(--bd);background:var(--sf);color:var(--tx);border-radius:8px;font-size:15px;cursor:pointer}
+nav button.on{background:var(--ac);color:var(--bg);border-color:var(--ac)}
+section{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:12px}
+.f{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:flex-end}
+label{display:flex;flex-direction:column;font-size:12px;color:var(--mu);gap:2px}
+input,select{padding:7px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--tx);font-size:14px;min-width:110px;max-width:170px}
+.b{padding:8px 14px;border:0;border-radius:6px;background:var(--ac);color:var(--bg);cursor:pointer;font-size:14px}
+.x{background:none;border:0;color:var(--rd);cursor:pointer;font-size:16px}
+.w{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:5px 8px;border-bottom:1px solid var(--bd);text-align:left;white-space:nowrap}th{color:var(--mu);font-weight:600}
+tfoot td{font-weight:700}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}
+.k{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px}.k small{color:var(--mu);display:block}.k b{font-size:18px}
+.pos{color:var(--ac)}.neg{color:var(--rd)}
+.bar{height:14px;background:var(--bd);border-radius:7px;overflow:hidden;margin:6px 0}.bar i{display:block;height:100%;background:var(--ac)}
+p.n{color:var(--mu);font-size:12px;margin:6px 0 0}
+.al{padding:6px 8px;border-left:4px solid var(--ac);margin:4px 0;background:var(--bg);border-radius:4px}.al.neg{border-color:var(--rd)}.al.wr{border-color:#c98a1b}summary{cursor:pointer;color:var(--mu);font-size:13px;margin-top:6px}
+</style></head><body><main>
+<h1>🌾🐄 Gestión Agro-Ganadera</h1>
+<nav id="nav"></nav><div id="app"></div>
+<p class="n" id="st">Solo en este dispositivo · Importes en pesos uruguayos.</p>
+<p class="n"><button class="b" onclick="exportar()">Descargar respaldo</button> <button class="b" onclick="this.nextElementSibling.click()">Restaurar respaldo</button><input type="file" accept=".json" hidden onchange="importar(this.files[0])"></p>
+</main>
+<script>
+// c: [campo, etiqueta, tipo] tipos: d fecha, n número, N número sumado, m dinero, x calculado, p plantación, c caravana, o:a,b opciones
+const S={
+plant:{t:'Plantaciones',c:[['fecha','Fecha plantación','d'],['cuadro','Cuadro Nº','o:1,2,3,4,5,6,7,8,9,10,11'],['cultivo','Qué se planta'],['cuadros','Nº cuadros','N'],['canteros','Canteros','N']]},
+insumo:{t:'Fertilizantes y pesticidas',c:[['fecha','Fecha','d'],['pl','Plantación','p'],['tipo','Tipo','o:Fertilizante,Pesticida'],['prod','Producto'],['cant','Cantidad / dosis'],['costo','Costo $','m']]},
+riego:{t:'Riego',c:[['fecha','Fecha','d'],['pl','Plantación','p'],['met','Método','o:Goteo,Aspersión,Surco,Otro'],['hs','Horas','N'],['costo','Costo $','m']]},
+jornal:{t:'Peones y jornales',c:[['fecha','Fecha','d'],['peon','Peón'],['pl','Plantación','p'],['mod','Modalidad','o:Día,Cantero,Bolsa,Cajón,Hora,Otro'],['cant','Cantidad','n'],['tarifa','Tarifa $','n'],['total','Total $','x']]},
+semilla:{t:'Semillas',c:[['fecha','Fecha','d'],['pl','Plantación','p'],['var','Semilla / variedad'],['cant','Cantidad','N'],['costo','Costo $','m']]},
+gasoil:{t:'Gas oil',c:[['fecha','Fecha','d'],['dest','Destino','o:Tractor,Bomba de riego,Camioneta,Otro'],['lt','Litros','N'],['costo','Costo $','m']]},
+cosecha:{t:'Cosechas y ventas agrícolas',c:[['fecha','Fecha','d'],['pl','Plantación','p'],['prod','Producto'],['cant','Cantidad','N'],['ingreso','Ingreso $','m']]},
+animal:{t:'Registro de animales',c:[['car','Caravana','c'],['sexo','Género','o:Hembra,Macho'],['cat','Categoría','o:Vaca,Vaquillona,Ternero/a,Novillo,Toro'],['raza','Raza'],['fecha','Nac./ingreso','d'],['compra','Costo compra $','m'],['est','Estado','o:Activo,Vendido,Muerto']]},
+sanidad:{t:'Sanidad: vacunas, enfermedades, tratamientos',c:[['fecha','Fecha','d'],['car','Caravana','c'],['tipo','Tipo','o:Vacuna,Enfermedad,Tratamiento'],['det','Detalle'],['costo','Costo $','m'],['prox','Próxima fecha','d']]},
+alim:{t:'Alimentación',c:[['fecha','Fecha','d'],['lote','Lote / categoría'],['ali','Alimento'],['kg','Kg','N'],['costo','Costo $','m']]},
+ventag:{t:'Ventas de ganado',c:[['fecha','Fecha','d'],['car','Caravana','c'],['kg','Peso kg','N'],['ingreso','Ingreso $','m']]},
+otros:{t:'Otros movimientos',c:[['fecha','Fecha','d'],['tipo','Tipo','o:Ingreso,Egreso'],['con','Concepto'],['monto','Monto $','m']]},
+recor:{t:'Recordatorios',c:[['fecha','Fecha','d'],['txt','Recordatorio']]},
+pago:{t:'Pagos del préstamo',c:[['fecha','Fecha','d'],['tipo','Concepto','o:Capital,Interés'],['monto','Monto $','m']]}};
+const G={agr:['plant','semilla','insumo','riego','gasoil','jornal','cosecha'],gan:['animal','sanidad','alim','ventag']};
+const CALC={jornal:r=>num(r.cant)*num(r.tarifa)};
+let D={t:{},cfg:{dicose:'',loan:{}}},tab='agr';
+try{const s=localStorage.getItem('agro');if(s)D=JSON.parse(s)}catch(e){}
+let DB=null,last={},ST='Solo en este dispositivo';
+const stat=()=>{const e=document.querySelector('#st');if(e)e.textContent=ST+' · Importes en pesos uruguayos.'};
+function save(){try{localStorage.setItem('agro',JSON.stringify(D))}catch(e){}
+ if(!DB)return;
+ [...Object.keys(D.t),'cfg'].forEach(k=>{const v=JSON.stringify(k=='cfg'?D.cfg:D.t[k]);if(last[k]===v)return;last[k]=v;
+  DB.doc('agro/'+k).set(k=='cfg'?{cfg:D.cfg}:{rows:D.t[k]}).catch(e=>{ST='No se pudo guardar ('+(e&&e.code)+')';stat()})})}
+async function initDb(){try{const db=await claude.use('db');if(!db)return;DB=db;let first=true;
+ db.collection('agro').onSnapshot(s=>{
+  if(first&&!s.metadata.fromCache){first=false;if(s.empty){ST='Sincronizado ✓';save();stat();return}}
+  let ch=false;
+  s.docs.forEach(d=>{const x=d.data()||{},k=d.id,v=JSON.stringify(k=='cfg'?x.cfg:x.rows);if(last[k]===v)return;last[k]=v;if(k=='cfg')D.cfg=x.cfg||D.cfg;else D.t[k]=x.rows||[];ch=true});
+  ST='Sincronizado ✓';if(ch){try{localStorage.setItem('agro',JSON.stringify(D))}catch(e){}render()}stat()},
+  e=>{ST='Sin sincronizar ('+(e&&e.code)+')';stat()})}catch(e){}}
+const num=v=>+v||0,rows=k=>D.t[k]||(D.t[k]=[]);
+const fm=v=>'$ '+num(v).toLocaleString('es-UY',{maximumFractionDigits:0});
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sum=(k,f)=>rows(k).reduce((a,r)=>a+num(r[f]),0);
+const $=s=>document.querySelector(s);
+function inp(k,c){const t=c[2]||'',id=k+'_'+c[0];let o;
+ if(t=='p')o=rows('plant').map(r=>r.cultivo+' – '+r.cuadro);else if(t.startsWith('o:'))o=t.slice(2).split(',');
+ const el=o?`<select id="${id}">${o.map(x=>`<option>${esc(x)}</option>`).join('')}</select>`:
+ `<input id="${id}" type="${{d:'date',n:'number',N:'number',m:'number'}[t]||'text'}" step="any" ${t=='c'?'list="car"':''}>`;
+ return `<label>${c[1]}${el}</label>`}
+function add(k){const r={};S[k].c.forEach(c=>{if(c[2]!='x')r[c[0]]=$('#'+k+'_'+c[0]).value});
+ if(!Object.values(r).some(v=>v))return;if(CALC[k])r.total=CALC[k](r);rows(k).push(r);save();render()}
+function del(k,i){rows(k).splice(i,1);save();render()}
+function fmt(c,v){const t=c[2]||'';return t=='m'||t=='x'?fm(v):esc(v)}
+function tbl(k){const s=S[k],hasT=s.c.some(c=>'mxN'.includes(c[2]||'-'));
+ return `<section><h2>${s.t}</h2><div class="f">${s.c.filter(c=>c[2]!='x').map(c=>inp(k,c)).join('')}<button class="b" onclick="add('${k}')">Agregar</button></div>
+ <div class="w"><table><thead><tr>${s.c.map(c=>`<th>${c[1]}</th>`).join('')}<th></th></tr></thead><tbody>${
+ rows(k).map((r,i)=>`<tr>${s.c.map(c=>`<td>${fmt(c,r[c[0]])}</td>`).join('')}<td><button class="x" onclick="del('${k}',${i})">✕</button></td></tr>`).join('')}</tbody>${
+ hasT?`<tfoot><tr>${s.c.map(c=>`<td>${'mxN'.includes(c[2]||'-')?fmt(c[2]=='N'?['','','n']:c,sum(k,c[0])):''}</td>`).join('')}<td></td></tr></tfoot>`:''}</table></div></section>`}
+function flows(){const f=[],P=(k,fld,cat,s)=>rows(k).forEach(r=>f.push({d:(r.fecha||'').slice(0,7)||'s/f',cat,m:num(r[fld])*s}));
+ P('cosecha','ingreso','Ventas agrícolas',1);P('ventag','ingreso','Ventas de ganado',1);
+ P('insumo','costo','Fertilizantes y pesticidas',-1);P('riego','costo','Riego',-1);P('jornal','total','Jornales',-1);
+ P('alim','costo','Alimentación',-1);P('semilla','costo','Semillas',-1);P('gasoil','costo','Gas oil',-1);P('sanidad','costo','Sanidad',-1);P('pago','monto','Pagos del préstamo',-1);
+ rows('otros').forEach(r=>f.push({d:(r.fecha||'').slice(0,7)||'s/f',cat:'Otros '+(r.tipo=='Ingreso'?'ingresos':'egresos'),m:num(r.monto)*(r.tipo=='Ingreso'?1:-1)}));return f}
+function fin(){const f=flows(),L=D.cfg.loan,inv=sum('animal','compra'),cap=rows('pago').filter(r=>r.tipo=='Capital').reduce((a,r)=>a+num(r.monto),0);
+ const ing=f.filter(x=>x.m>0).reduce((a,x)=>a+x.m,0),eg=-f.filter(x=>x.m<0).reduce((a,x)=>a+x.m,0),net=ing-eg;
+ const cats={};f.forEach(x=>cats[x.cat]=(cats[x.cat]||0)+x.m);
+ const mes={};f.forEach(x=>{(mes[x.d]=mes[x.d]||{i:0,e:0})[x.m>0?'i':'e']+=Math.abs(x.m)});
+ const saldo=num(L.monto)-cap,pct=num(L.monto)?Math.min(100,cap/num(L.monto)*100):0;
+ const lf=(f,l,t)=>`<label>${l}<input type="${t||'text'}" value="${esc(L[f])}" onchange="D.cfg.loan.${f}=this.value;save();render()"></label>`;
+ return `<div class="g"><div class="k"><small>Ingresos</small><b class="pos">${fm(ing)}</b></div><div class="k"><small>Egresos (incl. préstamo)</small><b class="neg">${fm(eg)}</b></div>
+ <div class="k"><small>Resultado / ahorro</small><b class="${net<0?'neg':'pos'}">${fm(net)}</b></div><div class="k"><small>Inversión en ganado</small><b>${fm(inv)}</b></div></div>
+ <section><h2>Resumen por rubro</h2><div class="w"><table><tbody>${Object.entries(cats).map(([c,v])=>`<tr><td>${c}</td><td class="${v<0?'neg':'pos'}">${fm(v)}</td></tr>`).join('')}</tbody></table></div>
+ <h2 style="margin-top:12px">Por mes</h2><div class="w"><table><thead><tr><th>Mes</th><th>Ingresos</th><th>Egresos</th><th>Neto</th></tr></thead><tbody>${Object.keys(mes).sort().map(m=>`<tr><td>${m}</td><td>${fm(mes[m].i)}</td><td>${fm(mes[m].e)}</td><td class="${mes[m].i<mes[m].e?'neg':'pos'}">${fm(mes[m].i-mes[m].e)}</td></tr>`).join('')}</tbody></table></div>
+ <p class="n">La compra de animales no se descuenta como egreso: se financió con el préstamo y se ve en “Inversión en ganado”. Se descuentan las cuotas pagadas.</p></section>
+ <section><h2>Préstamo</h2><div class="f">${lf('acre','Acreedor')}${lf('monto','Monto original $','number')}${lf('fecha','Fecha','date')}${lf('tasa','Tasa anual %','number')}${lf('cuotas','Cuotas pactadas','number')}</div>
+ <div class="g"><div class="k"><small>Capital pagado</small><b>${fm(cap)}</b></div><div class="k"><small>Saldo pendiente</small><b class="neg">${fm(saldo)}</b></div><div class="k"><small>Interés pagado</small><b>${fm(sum('pago','monto')-cap)}</b></div></div>
+ <div class="bar"><i style="width:${pct}%"></i></div><small>${pct.toFixed(1)}% saldado</small></section>${tbl('pago')}${tbl('otros')}`}
+let sel=null,dOpen=false;
+const Q={1:[259,78,178,74],2:[263,156,174,76],3:[314,265,126,72],4:[320,337,125,105],5:[328,442,127,85],6:[287,527,58,115],7:[287,642,60,93],8:[227,737,125,113],9:[55,261,115,91],10:[55,352,115,90],11:[55,442,115,88]};
+const HT=[[217,267,97,260],[40,550,138,190]];
+const pls=n=>rows('plant').filter(r=>String(r.cuadro)==n);
+function mapa(){
+ const svg=`<svg viewBox="0 0 500 870" style="width:100%;max-width:440px;display:block;margin:auto"><defs><pattern id="ht" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="var(--mu)" stroke-width="1.5"/></pattern></defs>
+<rect x="40" y="78" width="430" height="772" fill="none" stroke="var(--bd)" stroke-dasharray="4"/>
+${HT.map(h=>`<rect x="${h[0]}" y="${h[1]}" width="${h[2]}" height="${h[3]}" fill="url(#ht)" stroke="var(--mu)"/>`).join('')}
+<rect x="345" y="527" width="122" height="210" fill="none" stroke="var(--mu)"/><text x="406" y="632" text-anchor="middle" fill="var(--mu)" font-size="18" transform="rotate(-90 406 632)">MAXI</text>
+${Object.entries(Q).map(([n,q])=>{const u=pls(n).length,s=sel==n;return `<g onclick="sel='${n}';render()" style="cursor:pointer"><rect x="${q[0]}" y="${q[1]}" width="${q[2]}" height="${q[3]}" rx="3" fill="${s||u?'var(--ac)':'var(--sf)'}" fill-opacity="${s?.8:u?.35:1}" stroke="var(--ac)" stroke-width="${s?3:1.5}"/><text x="${q[0]+q[2]/2}" y="${q[1]+q[3]/2+5}" text-anchor="middle" fill="var(--tx)" font-size="16" font-weight="700">${n}</text></g>`}).join('')}</svg>`;
+ let d='<p class="n">Tocá un cuadro para ver su detalle. Los cuadros con plantación se ven coloreados.</p>';
+ if(sel){const P=pls(sel),own=r=>String(r.pl||'').split(' – ').pop()==sel,g=(k,f)=>rows(k).filter(own).reduce((a,r)=>a+num(r[f]),0),
+ gas=g('insumo','costo')+g('riego','costo')+g('jornal','total')+g('semilla','costo'),ing=g('cosecha','ingreso');
+ d=`<h2>Cuadro ${sel}</h2>${P.length?`<div class="w"><table><thead><tr><th>Plantación</th><th>Qué se planta</th><th>Cuadros</th><th>Canteros</th></tr></thead><tbody>${P.map(r=>`<tr><td>${esc(r.fecha)}</td><td>${esc(r.cultivo)}</td><td>${esc(r.cuadros)}</td><td>${esc(r.canteros)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="n">Sin plantaciones registradas.</p>'}
+ <div class="g" style="margin-top:10px"><div class="k"><small>Gastos del cuadro</small><b class="neg">${fm(gas)}</b></div><div class="k"><small>Ingresos por cosecha</small><b class="pos">${fm(ing)}</b></div><div class="k"><small>Resultado del cuadro</small><b class="${ing<gas?'neg':'pos'}">${fm(ing-gas)}</b></div></div>
+ <button class="b" onclick="tab='agr';render();$('#plant_cuadro').value='${sel}'">Agregar plantación en este cuadro</button>`}
+ return `<section><h2>Mapa de la chacra</h2>${svg}</section><section>${d}</section>`}
+function alertsHtml(){const h=new Date();h.setHours(0,0,0,0);const a=[],J=D.cfg.dj||{};
+ const A=(f,t)=>{if(!f)return;const n=Math.round((new Date(f+'T00:00')-h)/864e5);if(n<=30)a.push({n,t})};
+ A(J.dicose,'Declaración jurada DICOSE');A(J.fruti,'Declaración jurada frutihortícola');A(J.pp,'Declaración de pequeño productor');
+ rows('sanidad').forEach(r=>A(r.prox,(r.tipo||'Sanidad')+' '+(r.det||'')+' – caravana '+(r.car||'')));rows('recor').forEach(r=>A(r.fecha,r.txt));
+ a.sort((x,y)=>x.n-y.n);
+ const dj=(k,l)=>`<label>${l}<input type="date" value="${esc(J[k])}" onchange="(D.cfg.dj=D.cfg.dj||{}).${k}=this.value;save();render()"></label>`;
+ return `<section><h2>🔔 Alertas</h2>${a.length?a.map(x=>`<div class="al ${x.n<0?'neg':x.n<=7?'wr':''}">${x.n<0?'⚠️ Venció hace '+(-x.n)+' d':x.n==0?'⚠️ Hoy':'En '+x.n+' d'} · ${esc(x.t)}</div>`).join(''):'<p class="n">Sin vencimientos en los próximos 30 días.</p>'}
+<details ${dOpen?'open':''} ontoggle="dOpen=this.open"><summary>Configurar vencimientos y recordatorios</summary><div class="f" style="margin-top:8px">${dj('dicose','Venc. DJ DICOSE')}${dj('fruti','Venc. DJ frutihortícola')}${dj('pp','Venc. pequeño productor')}</div>${tbl('recor')}</details></section>`}
+function render(){
+ $('#nav').innerHTML=[['agr','🌱 Agrícola'],['gan','🐄 Ganadero'],['map','🗺️ Mapa'],['fin','💰 Finanzas']].map(([k,l])=>`<button class="${tab==k?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('');
+ let h=`<datalist id="car">${rows('animal').map(r=>`<option value="${esc(r.car)}">`).join('')}</datalist>`;
+ if(tab=='gan')h+=`<section><div class="f"><label>Nº DICOSE<input value="${esc(D.cfg.dicose)}" onchange="D.cfg.dicose=this.value;save()"></label><span>Animales activos: <b>${rows('animal').filter(r=>r.est=='Activo').length}</b></span></div></section>`;
+ h=alertsHtml()+h+(tab=='fin'?fin():tab=='map'?mapa():G[tab].map(tbl).join(''));$('#app').innerHTML=h}
+function exportar(){const b=new Blob([JSON.stringify(D)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='respaldo-agro-'+new Date().toISOString().slice(0,10)+'.json';a.click()}
+function importar(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!x.t)throw 0;D=x;D.cfg=D.cfg||{};save();render()}catch(e){alert('Archivo de respaldo inválido')}};r.readAsText(f)}
+render();initDb();
+</script></body></html>
